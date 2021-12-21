@@ -1,0 +1,18 @@
+
+node_op_name: "object_pos"
+
+subscribers:
+
+  border_boxes:
+    topic: /affordances/object_bounding_boxes
+    queue_size: 1
+
+  image_source:
+    topic: /usb_cam/image_raw
+    queue_size: 1
+
+publishers:
+
+  status_object_pos:
+    topic: /affordances/status_object_pos
+    queue_size: 1

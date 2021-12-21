@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<launch>
+  <!-- Archivos de Parametros -->
+  <arg name="ros_param_file"             default="$(find affordances)/config/person_object.yaml"/>
+
+  <!-- Load parameters -->
+  <rosparam command="load" ns="affordances" file="$(arg ros_param_file)"/>
+
+  <!-- Start affordances nodes -->
+  <node pkg="affordances" ns="affordances" type="person_object.py" name="person_object" output="screen"></node>
+  <node pkg="affordances" ns="affordances" type="object_pos.py" name="object_pos" output="screen"></node>
+</launch>

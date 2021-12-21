@@ -1,0 +1,25 @@
+
+#  Parametros Nodo Person_Object
+
+package_name: "affordances"
+node_po_name: "person_object"
+
+subscribers:
+
+  number_object:
+    topic: /darknet_ros/found_object
+    queue_size: 1
+
+  object_bounding_boxes:
+    topic: /darknet_ros/bounding_boxes
+    queue_size: 1
+
+publishers:
+
+  bounding_boxes:
+    topic: /affordances/object_bounding_boxes
+    queue_size: 1
+
+  flag:
+    topic: /affordances/flag
+    queue_size: 1
