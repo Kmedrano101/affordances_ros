@@ -1,0 +1,60 @@
+
+#Nodes and Packages
+
+package_name: "affordances"
+node_po_name: "person_object"
+node_op_name: "object_pos"
+
+subscribers:
+
+  image_source:
+    topic: /usb_cam/image_raw
+    queue_size: 1
+
+  # Node object_pos
+  border_boxes:
+    topic: /affordances/object_bounding_boxes
+    queue_size: 1
+
+  # Node person_object
+  number_object:
+    topic: /darknet_ros/found_object
+    queue_size: 1
+
+  object_bounding_boxes:
+    topic: /darknet_ros/bounding_boxes
+    queue_size: 1
+
+  # Node person_pose
+  person_object_flag:
+    topic: /affordances/flag
+    queue_size: 1
+
+publishers:
+
+  # Node object_pos
+  status_object_pos:
+    topic: /affordances/status_object_pos
+    queue_size: 1
+
+  data_object_pos:
+    topic: /affordances/data_object_pos
+    queue_size: 1
+
+  # Node person_object
+  bounding_boxes:
+    topic: /affordances/object_bounding_boxes
+    queue_size: 1
+
+  flag:
+    topic: /affordances/flag
+    queue_size: 1
+
+  # Node person_pose
+  status_person_pose:
+    topic: /affordances/status_person_pose
+    queue_size: 1
+
+  data_person_pose:
+    topic: /affordances/data_person_pose
+    queue_size: 1

@@ -8,21 +8,29 @@ Descripcion: Seguidor de posicion para objetos
 # import imutils
 #import time
 import cv2 as cv
+import time
+
+print("Version Of CV2",cv.__version__)
 
 # Parametros iniciales
 cap = cv.VideoCapture(0)
 # Definir tipo de tracker
 OPENCV_OBJECT_TRACKERS = {
 	"csrt": cv.TrackerCSRT_create,
-	"kcf": cv.TrackerKCF_create,
+	"kcf": cv.TrackerKCF_create, ### It's okay
+	"medianflow": cv.legacy.TrackerMedianFlow_create,
 	"mil": cv.TrackerMIL_create,
+	"mosse": cv.legacy.TrackerMOSSE_create
 	}
-tracker = OPENCV_OBJECT_TRACKERS["csrt"]()
+tracker = OPENCV_OBJECT_TRACKERS["mosse"]()
 initBB = None
 
 # Bucle principal
 print("Running...")
 contador = 0
+
+pTime = 0
+
 while True:
 	rec, frame = cap.read()
 	# Redefinir size img
@@ -45,6 +53,11 @@ while True:
 		# 	text = "{}: {}".format(k, v)
 		# 	cv.putText(frame, text, (10, H - ((i * 20) + 20)),
 		# 		cv.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+	cTime = time.time()
+	fps = 1 / (cTime - pTime)
+	pTime = cTime
+	cv.putText(frame, f'FPS: {int(fps)}', (400, 70), cv.FONT_HERSHEY_PLAIN,
+                3, (255, 0, 0), 3)
 	cv.imshow("Frame", frame)
 	key = cv.waitKey(1) & 0xFF
 	# Obtener frame para seguir 

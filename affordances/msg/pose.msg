@@ -1,0 +1,3 @@
+int8 id_pos
+geometry_msgs/Point position
+float64 visibility
