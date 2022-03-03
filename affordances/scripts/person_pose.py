@@ -169,6 +169,8 @@ class PersonPose:
                 #    cv.circle(self.cvFrame, (cx, cy), 5, (255, 0, 0), cv.FILLED)
             if contador >= 3:
                 self.readyCapturePose = True
+            else:
+                self.readyCapturePose = False
         self.pubTopicDataNode.publish(lmAux)
 
     def image_source_callback(self, msg) -> None:
@@ -209,7 +211,7 @@ def main():
     objNode.pubTopicDataNodeName = TOPIC_P2_NAME
     objNode.start_subscribers()
     objNode.start_publishers()
-    time.sleep(3)
+    time.sleep(2)
     INFO1 = True
     INFO2 = True
     while not rospy.is_shutdown():
@@ -223,10 +225,14 @@ def main():
             objNode.find_position(draw=False)
             cv.imshow("Image from Node PersonPose", objNode.cvFrame)
             cv.waitKey(1)
+            objNode._pubTopicStatusNode.publish(objNode.readyCapturePose)
             if objNode.readyCapturePose and INFO1:
                 rospy.loginfo("READY TO CAPTURE DATA")
                 INFO1 = False
-        # rate.sleep()
+            #else:
+            #    rospy.loginfo("NOT READY TO CAPTURE DATA")
+            #    INFO1 = True
+        #rate.sleep()
     rospy.spin()
 
 

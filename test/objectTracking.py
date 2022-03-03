@@ -22,7 +22,7 @@ OPENCV_OBJECT_TRACKERS = {
 	"mil": cv.TrackerMIL_create,
 	"mosse": cv.legacy.TrackerMOSSE_create
 	}
-tracker = OPENCV_OBJECT_TRACKERS["mosse"]()
+tracker = OPENCV_OBJECT_TRACKERS["kcf"]()
 initBB = None
 
 # Bucle principal
@@ -42,6 +42,8 @@ while True:
 			(x, y, w, h) = [int(v) for v in box]
 			cv.rectangle(frame, (x, y), (x + w, y + h),
 				(0, 255, 0), 2)
+		else:
+			print("Object lose!")
 		# fps.update()
 		# fps.stop()
 		# info = [
@@ -64,7 +66,7 @@ while True:
 	if key == ord("s"):
 		contador += 1
 		if contador%2==0:
-			tracker = OPENCV_OBJECT_TRACKERS["csrt"]()
+			tracker = OPENCV_OBJECT_TRACKERS["kcf"]()
 		initBB = cv.selectROI("Frame", frame, fromCenter=False, showCrosshair=True)
 		print(f"POS: {initBB}",type(initBB))
 		tracker.init(frame, initBB)

@@ -34,7 +34,7 @@ OPENCV_OBJECT_TRACKERS = {
     "kcf": cv.TrackerKCF_create,
     "mil": cv.TrackerMIL_create
 }
-TRACKER = OPENCV_OBJECT_TRACKERS["kcf"]()  # Test these objects tracker
+# Test these objects tracker
 BRIDGE = CvBridge()
 
 # Clase
@@ -65,6 +65,10 @@ class ObjectPos:
         self._ListVelocities = []
         self._velocityObject = 0
         self.data = objectData()
+        self.statusTracking = False
+        self.resetTracker = False
+        self.auxReset = False
+        self.TRACKER = OPENCV_OBJECT_TRACKERS["kcf"]()
 
     """Propierties"""
     @property
@@ -216,19 +220,23 @@ class ObjectPos:
         self._pubTopicDataNode = rospy.Publisher(self._pubTopicDataNodeName, objectData, queue_size=10)
 
     def get_pos(self) -> None:
-        pos = []
         """ Funcion para obtener la posicion central del objeto a realizar el tracking"""
-        if not self._dataPosReady and self._dataReceivedTopic2:
+        pos = []
+        self._dataPosReady = False
+        
+        if self._dataReceivedTopic2 and not self.statusTracking:
             for box in self._borderBoxes:
                 if box.Class == "cup":  # Considerar varios objetos del mismo tipo IMPORTANT
-                    rospy.loginfo("Object CUP encontrado.")
+                    #rospy.loginfo("Object CUP encontrado.")
                     #print(f"Data ({box.xmin},{box.ymin}, {box.xmax}, {box.ymax})")
                     pos.append(box.xmin-1)
                     pos.append(box.ymin-1)
                     pos.append(abs(box.ymax - box.ymin))
                     pos.append(abs(box.xmax - box.xmin)+1)
                     self._dataPosReady = True
+                    rospy.loginfo("Object detected")
                     self._posObject = tuple(pos)
+                    self._borderBoxes = []
                     break
 
     def find_velocity(self,x,y) -> None:
@@ -238,48 +246,63 @@ class ObjectPos:
         self.aTime = time.time()
         if self.aTime > (self.sTime+self.iTime):
             X2, Y2 = x, y
-            #print(f"X2: {X2} Y2: {Y2}")
             V = abs(self.X1 - X2) + abs(self.Y1 - Y2)
             self.ListVelocities.append(V)
             if len(self.ListVelocities) >= 5:
                 self.velocityObject = (sum(self.ListVelocities)/len(self.ListVelocities)) * 2 # FPS In this case is just per 1s
-                print("Velocity: ",int(self.velocityObject))
                 self.ListVelocities = []
             self.fValue = 0
             self.iTime = time.time()
 
     def process_img(self) -> None:
         # Verificar y validar datos recibidos enfocar seguimiento de objeto
-        if self._dataPosReady and self._dataReceivedTopic1:
-            #print(f"Datos desde show_img {self.get_pos()}")
-            if not self._statusNode:
-                TRACKER.init(self._cvFrame, self._posObject)
+        #success = False
+        if self.resetTracker and not self.auxReset:
+                self.restart_Tracker()
+                self.auxReset = True
+        if self._dataPosReady and self._dataReceivedTopic1 and not self._statusNode:
+            self.statusTracking = True
+            if self._posObject:
+                self.TRACKER.init(self._cvFrame, self._posObject)
                 rospy.loginfo("Tracker started.")
-                #threading.Timer(4, self.restart_capture_data).start()
+                self.auxReset = False
             self._statusNode = True
-            (success, box) = TRACKER.update(self._cvFrame)
-            if success:
-                (x, y, w, h) = [int(v) for v in box]
-                cv.rectangle(self._cvFrame, (x, y), (x + h, y + w), (0, 255, 0), 2)
-                X = int((x*2+h)/2)
-                Y = int((y*2+w)/2)
-                self.find_velocity(X,Y)
-                self.data.x = X
-                self.data.y = Y
-                self.data.velocity = self.velocityObject
-                cv.circle(self._cvFrame, (X,Y), 4, (255, 0, 0), -1)
-            # Send Data
-            self.pubTopicDataNode.publish(self.data)
-            #cv.putText(self._cvFrame, f"Velocity: {self.velocityObject}", (15,15), cv.FONT_HERSHEY_SIMPLEX, 3, (255,0,0), 2, cv.LINE_AA)
+        if self.statusTracking:
+            try:
+                (success, box) = self.TRACKER.update(self._cvFrame)
+                if success:
+                    (x, y, w, h) = [int(v) for v in box]
+                    cv.rectangle(self._cvFrame, (x, y), (x + h, y + w), (0, 255, 0), 2)
+                    X = int((x*2+h)/2)
+                    Y = int((y*2+w)/2)
+                    self.find_velocity(X,Y)
+                    self.data.x = X
+                    self.data.y = Y
+                    self.data.velocity = self.velocityObject
+                    cv.circle(self._cvFrame, (X,Y), 4, (255, 0, 0), -1)
+                else:
+                    self.resetTracker = True
+            except Exception as e:
+                print("Error updating IMG", e)
+                pass
+        if len(self._cvFrame)>0:
             cv.putText(self._cvFrame, f'Velocity: {int(self.velocityObject)}', (40, 70), cv.FONT_HERSHEY_PLAIN,
-                3, (255, 0, 0), 3)
+                    3, (255, 0, 0), 3)
             cv.imshow("Image from Node ObjectPos", self._cvFrame)
             cv.waitKey(1)
 
-    def restart_capture_data(self) -> None:
-        self._dataPosReady = False
+    def restart_Tracker(self) -> None:
         self._statusNode = False
-        TRACKER = OPENCV_OBJECT_TRACKERS["csrt"]()
+        #self.TRACKER.release() 
+        self.TRACKER = OPENCV_OBJECT_TRACKERS["kcf"]()
+        self._velocityObject = 0
+        self.statusTracking = False
+        self.resetTracker = False
+        rospy.loginfo("Tracker Reset.")
+        self._dataPosReady = False
+        self._posObject = ()
+        self._borderBoxes = []
+        #self._cvFrame = []	
 
 
 def main():
@@ -291,7 +314,7 @@ def main():
     print("#"*70)
     rospy.init_node(NODE_NAME)
     rospy.loginfo(f"NODO {NODE_NAME} INICIADO.")
-    #rate = rospy.Rate(1.0)
+    #rate = rospy.Rate(5.0)
     """Inicializar el objeto object_pos"""
     objNode = ObjectPos()
     objNode.subTopicBorderBoxesName = TOPIC_S1_NAME
@@ -308,7 +331,9 @@ def main():
         else:
             objNode.get_pos()
             objNode.process_img()
-        # rate.sleep()
+        objNode.pubTopicStatusNode.publish(objNode.statusNode)
+        objNode.pubTopicDataNode.publish(objNode.data)
+        #rate.sleep()
     rospy.spin()
 
 
