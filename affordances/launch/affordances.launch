@@ -19,7 +19,7 @@
   <rosparam command="load" ns="darknet_ros"     file="$(arg network_param_file)"/>
   <rosparam command="load" ns="affordances" file="$(arg affordances_param_file)"/>
 
-  <!-- Start usb_cam nodes--> 
+  <!-- Start usb_cam nodes
   <node name="usb_cam" pkg="usb_cam" type="usb_cam_node" output="screen" >
     <param name="video_device"    value="/dev/video0" />
     <param name="image_width"     value="640" />
@@ -27,7 +27,7 @@
     <param name="pixel_format"    value="yuyv" />
     <param name="camera_frame_id" value="usb_cam" />
     <param name="io_method"       value="mmap"/>
-  </node>
+  </node>--> 
 
   <!-- Start darknet and ros wrapper -->
   <node pkg="darknet_ros" type="darknet_ros" name="darknet_ros" output="screen" launch-prefix="$(arg launch_prefix)">
@@ -39,5 +39,5 @@
   <node pkg="affordances" ns="affordances" type="person_object.py" name="person_object" output="screen" launch-prefix="gnome-terminal --command"></node>
   <node pkg="affordances" ns="affordances" type="object_pos.py" name="object_pos" output="screen" launch-prefix="gnome-terminal --command"></node>
   <node pkg="affordances" ns="affordances" type="person_pose.py" name="person_pose" output="screen" launch-prefix="gnome-terminal --command"></node>
-  <!--<node pkg="affordances" ns="affordances" type="train.py" name="train" output="screen" launch-prefix="gnome-terminal command"></node>-->
+  <node pkg="affordances" ns="affordances" type="agent.py" name="agent" output="screen" launch-prefix="gnome-terminal --command"></node>
 </launch>

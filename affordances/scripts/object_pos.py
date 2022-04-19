@@ -60,6 +60,8 @@ class ObjectPos:
         self._sTime = 0.1
         self._iTime = 0
         self._fValue = 0
+        self._TrackTime = 11.5
+        self._TrackUpdateTime = 0
         self._X1 = 0
         self._Y1 = 0
         self._ListVelocities = []
@@ -68,7 +70,8 @@ class ObjectPos:
         self.statusTracking = False
         self.resetTracker = False
         self.auxReset = False
-        self.TRACKER = OPENCV_OBJECT_TRACKERS["kcf"]()
+        self.TRACKER = OPENCV_OBJECT_TRACKERS["csrt"]()
+        self.ClassObject = None
 
     """Propierties"""
     @property
@@ -219,24 +222,25 @@ class ObjectPos:
             self._pubTopicStatusNodeName, Bool, queue_size=10)
         self._pubTopicDataNode = rospy.Publisher(self._pubTopicDataNodeName, objectData, queue_size=10)
 
+    # TEST COMMENTS
+    # Actualizar posicion cada cierto tiempo con la condicion de encontrar el mismo objeto, tracker se queda perdido en otra posicion que no es la real
     def get_pos(self) -> None:
         """ Funcion para obtener la posicion central del objeto a realizar el tracking"""
         pos = []
         self._dataPosReady = False
-        
+        Objetos = ["sofa"]   #["cup","bicycle","sofa","chair","wine glass","cell phone","laptop","book"]   
         if self._dataReceivedTopic2 and not self.statusTracking:
             for box in self._borderBoxes:
-                if box.Class == "cup":  # Considerar varios objetos del mismo tipo IMPORTANT
-                    #rospy.loginfo("Object CUP encontrado.")
-                    #print(f"Data ({box.xmin},{box.ymin}, {box.xmax}, {box.ymax})")
-                    pos.append(box.xmin-1)
-                    pos.append(box.ymin-1)
-                    pos.append(abs(box.ymax - box.ymin))
-                    pos.append(abs(box.xmax - box.xmin)+1)
+                if box.Class in Objetos: 
+                    pos.append(box.xmin-2)
+                    pos.append(box.ymin-2)
+                    pos.append(abs(box.ymax - box.ymin)+2)
+                    pos.append(abs(box.xmax - box.xmin)+2)
                     self._dataPosReady = True
                     rospy.loginfo("Object detected")
                     self._posObject = tuple(pos)
                     self._borderBoxes = []
+                    self.ClassObject = box.Class
                     break
 
     def find_velocity(self,x,y) -> None:
@@ -279,22 +283,29 @@ class ObjectPos:
                     self.data.x = X
                     self.data.y = Y
                     self.data.velocity = self.velocityObject
+                    self.data.classObject = self.ClassObject
                     cv.circle(self._cvFrame, (X,Y), 4, (255, 0, 0), -1)
                 else:
                     self.resetTracker = True
             except Exception as e:
                 print("Error updating IMG", e)
                 pass
+            self.aTime = time.time()
+            if self.aTime > (self._TrackTime+self._TrackUpdateTime):
+                self._TrackUpdateTime = time.time()
+                self.resetTracker = True
+                
         if len(self._cvFrame)>0:
             cv.putText(self._cvFrame, f'Velocity: {int(self.velocityObject)}', (40, 70), cv.FONT_HERSHEY_PLAIN,
                     3, (255, 0, 0), 3)
             cv.imshow("Image from Node ObjectPos", self._cvFrame)
             cv.waitKey(1)
+        
 
     def restart_Tracker(self) -> None:
         self._statusNode = False
         #self.TRACKER.release() 
-        self.TRACKER = OPENCV_OBJECT_TRACKERS["kcf"]()
+        self.TRACKER = OPENCV_OBJECT_TRACKERS["csrt"]()
         self._velocityObject = 0
         self.statusTracking = False
         self.resetTracker = False
@@ -302,6 +313,7 @@ class ObjectPos:
         self._dataPosReady = False
         self._posObject = ()
         self._borderBoxes = []
+        self._TrackUpdateTime = time.time()
         #self._cvFrame = []	
 
 

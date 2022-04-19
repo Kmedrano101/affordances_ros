@@ -1,10 +1,7 @@
-
-from mimetypes import init
 import mediapipe as mp
 import cv2
 import time
 import numpy as np
-import pandas as pd
 import os
 """mpPose = mp.solutions.pose
 pose = mpPose.Pose()
@@ -56,22 +53,12 @@ if listac:
     with open('dataset.csv', 'a') as f:
         write = csv.writer(f,delimiter=':', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         write.writerow(listac)
-    
+    with open("dataset.txt", "a") as file:
+        file.write("\n"+str(listac))
+    #time.sleep(5)
 else:
     print("Datos NO")
 
-class test:
-    def __init__(self):
-        self.lista = []
-    def process(self):
-        listB = []
-        for x in range(10):
-            self.lista.append(x)
-            listB.append(self.lista[:])
-            
-        print(listB)
-
-obj = test()
-
-obj.process()
-print("OK")
+#####################################################################
+# Determinar posiciones del objeto en base a puntos claves del cuerpo
+# Topic para lanzar informacion de acciones que determina el robot

@@ -1,0 +1,19 @@
+
+Actividades con objetos:
+
+Bebiendo (Agua, cafe, etc)
+Acostado o sentado en sofa
+Trabajando con el ordenador
+Acostado en la cama
+Utilizando el telefono movil
+Leyendo libro
+
+Actividades sin objetos:
+
+Caminando
+ejercicio
+
+################################
+1 - Toma de datos solo posiciones de pose y posición objeto
+2 - Toma de datos posiciones de pose más probables de movimiento - manipulación y posición objeto 
+2 - Toma de datos distancia entre poses más probables de movimiento - manipulación y distancia objeto a puntos alto, medio y bajo

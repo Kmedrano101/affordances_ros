@@ -4,11 +4,13 @@
 package_name: "affordances"
 node_po_name: "person_object"
 node_op_name: "object_pos"
+node_agent_name: "agent"
+node_dialog_name: "dialog"
 
 subscribers:
 
   image_source:
-    topic: /usb_cam/image_raw
+    topic: /videofile/image_raw #/usb_cam/image_raw
     queue_size: 1
 
   # Node object_pos
@@ -57,4 +59,9 @@ publishers:
 
   data_person_pose:
     topic: /affordances/data_person_pose
+    queue_size: 1
+
+  # Node train
+  type_activity:
+    topic: /affordances/number_activity
     queue_size: 1

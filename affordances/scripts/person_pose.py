@@ -149,7 +149,6 @@ class PersonPose:
         dataPoint = Point()
         dataPose = pose()
         contador = 0
-        listaFinal = []
         if self.results.pose_landmarks:
             for id, lm in enumerate(self.results.pose_landmarks.landmark):
                 #print(f"id {id} x: {lm.x} y: {lm.y}")
@@ -159,7 +158,7 @@ class PersonPose:
                 dataPose.id_pos = id
                 dataPose.position = dataPoint
                 dataPose.visibility = lm.visibility
-                if id == 0 or id == 15 or id == 16:
+                if id == 0 or id == 15 or id == 16 or id == 11 or id == 12:
                     if lm.visibility>0.5:
                         contador += 1
                 h, w, c = self.cvFrame.shape
