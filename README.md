@@ -3,7 +3,7 @@
 Para navegación semántica, detección de interacción entre persona y objeto.
 El paquete **affordances_ros** permite clasificar 5 clases de actividades con objetos en viviendas para robots mobiles.
 ## Arquitectura
-![Imagen de Arquitectura](https://drive.google.com/file/d/1_pdSDJWVPDOzU_oOk0t_P_ohv795si4v/view?usp=sharing)
+![Arquitectura](https://drive.google.com/file/d/1_pdSDJWVPDOzU_oOk0t_P_ohv795si4v/view?usp=sharing)
 ## Requisitos
 
 - Ubuntu 20.04 LTS + ROS Noetic
