@@ -14,7 +14,7 @@ except Exception:
 
 setup(
 # Project name:
-name='semantic-nav',
+name='Affordances_ros',
 
 # Packages to include in the distribution:
 packages=find_packages(','),
@@ -40,18 +40,10 @@ author='Kevin Medrano Ayala',
 author_email='kevin.ejem18@gmail.com',
 
 # Link to your github repository or website:
-url='https://github.com/Kmedrano101/tfm',
+url='https://github.com/Kmedrano101/affordances_ros',
 
 # Download Link from where the project can be downloaded from:
-download_url='',
+download_url='https://github.com/Kmedrano101/affordances_ros',
 
 # List of keywords:
-keywords=[],
-
-# List project dependencies:
-install_requires=[],
-
-# https://pypi.org/classifiers/
-classifiers=[]
-
-)
+keywords=['Maching Learning','ROS','Robotics','Mediapipe','Object Detection']

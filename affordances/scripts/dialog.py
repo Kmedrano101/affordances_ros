@@ -6,6 +6,7 @@ from rospy.exceptions import ROSException
 import time
 from os import system
 from std_msgs.msg import Int8
+from affordances.msg import affordance
 
 import pyttsx3
 engine = pyttsx3.init(driverName='espeak')
@@ -21,7 +22,7 @@ except ROSException:
 PACKAGE_NAME = rospy.get_namespace()
 NODE_NAME = rospy.get_param(PACKAGE_NAME+"node_dialog_name", default="dialog")
 TOPIC_S1_NAME = rospy.get_param(
-    PACKAGE_NAME+"publishers/type_activity/topic", default="/affordances/number_activity")
+    PACKAGE_NAME+"publishers/utility/topic", default="/affordances/utilities")
 
 # Clase Dialog
 
@@ -30,26 +31,39 @@ class Dialog:
     """Dialog"""
 
     def __init__(self):
-        self._numberActivity = Int8()				# Only Private no external access
-        self._stateNode = None                      # Private and external access
-        self._subTopicActivityName = None           # Private and external access
+        self._stateNode = None
+        self._subTopicUtilityName = None
+        self.subTopicUtility = None
+        self.objectUtility = None
+        self.utilities = None
+        self.affordance = affordance()
 
     """Properties"""
-    
+
+    @property
+    def subTopicUtilityName(self):
+        """The subTopicBoundingBoxesName property."""
+        return self._subTopicUtilityName
+
+    @subTopicUtilityName.setter
+    def subTopicUtilityName(self, value):
+        if value:
+            self._subTopicUtilityName = value
+        else:
+            rospy.loginfo("Invalid Name of topic Utility")
+
     """ Methods and Actions"""
-    def speakActivity(self) ->None:
+    def start_subscribers(self) -> None:
+        rospy.Subscriber(self._subTopicActivityName, affordance, self.utility_callback)
+
+    def utility_callback(self, msg) -> None:
+        self.affordance = msg
+        print("Data: ",self.affordance)
+
+    def speakUtility(self) ->None:
         pass
 
-
-    def number_activity_callback(self, msg) -> None:
-        self._numberActivity = msg
-
-    def start_subscribers(self) -> None:
-        rospy.Subscriber(self._subTopicActivityName, int, self.number_activity_callback)
-
-
 def main():
-    # Don't forget to remove this test mode
     system('clear')
     time.sleep(1)
     print("#"*70)
@@ -57,19 +71,15 @@ def main():
     print("#"*70)
     rospy.init_node(NODE_NAME)
     rospy.loginfo(f"NODO {NODE_NAME} INICIADO.")
-    #rate = rospy.Rate(1.0)
     """Inicializar el objeto object_pos"""
     objNode = Dialog()
-    objNode._subTopicActivityName = TOPIC_S1_NAME
+    objNode.subTopicUtilityName = TOPIC_S1_NAME
     objNode.start_subscribers()
     #engine.say("Node Dialog")
     #engine.runAndWait()
-    time.sleep(2)
+    time.sleep(1)
     while not rospy.is_shutdown():
         pass
-        #rate.sleep()
-    rospy.spin()
-
 
 if __name__ == '__main__':
     try:

@@ -7,7 +7,7 @@ from cv_bridge import CvBridge, CvBridgeError
 from rospy.exceptions import ROSException
 from std_msgs.msg import Bool
 from geometry_msgs.msg import Point
-from affordances.msg import personPos,pose 
+from affordances.msg import personPos, pose
 import mediapipe as mp
 import time
 from os import system
@@ -31,46 +31,30 @@ TOPIC_P1_NAME = rospy.get_param(
 TOPIC_P2_NAME = rospy.get_param(
     PACKAGE_NAME+"publishers/data_person_pose/topic", default="/affordances/data_person_pose")
 BRIDGE = CvBridge()
-# Clase Person Pose
+
+# Clase PersonPose
 
 
 class PersonPose:
     """Person object"""
 
     def __init__(self):
-        self._cvFrame = []						# Only Private no external access
-        self._subTopicFlagName = None           #
-        self._subTopicImageSourceName = None    # Private and external access
-        self._pubTopicStatusNodeName = None		# Private and external access
-        self._pubTopicDataNodeName = None	    # Private and external access
-        self._pubTopicDataNode = None	        # Private and external access
-        self._pubTopicStatusNode = None			# Private and external access
-        self._statusFlag = False				# Private and external access
-        self._dataReceivedTopic1 = False		# Private and external access
-        self._dataReceivedTopic2 = False		# Private and external access
+        self._subTopicFlagName = None
+        self._subTopicImageSourceName = None
+        self._pubTopicStatusNodeName = None
+        self._pubTopicDataNodeName = None
+        self.cvFrame = []
+        self.pubTopicDataNode = None
+        self.pubTopicStatusNode = None
+        self.statusFlag = False
+        self.dataReceivedTopic1 = False
+        self.dataReceivedTopic2 = False
         self.mpDraw = mp.solutions.drawing_utils
         self.mpPose = mp.solutions.pose
         self.pose = self.mpPose.Pose()
-        self._readyCapturePose = False	        # Private and external access
+        self.readyCapturePose = False
 
     """Properties"""
-    @property
-    def readyCapturePose(self):
-        """The readyCapturePose property."""
-        return self._readyCapturePose
-
-    @readyCapturePose.setter
-    def readyCapturePose(self, value):
-        self._readyCapturePose = value
-
-    @property
-    def cvFrame(self):
-        """The cvFrame property."""
-        return self._cvFrame
-
-    @cvFrame.setter
-    def cvFrame(self, value):
-        self._cvFrame = value
 
     @property
     def subTopicFlagName(self):
@@ -79,7 +63,10 @@ class PersonPose:
 
     @subTopicFlagName.setter
     def subTopicFlagName(self, value):
-        self._subTopicFlagName = value  
+        if value:
+            self._subTopicFlagName = value
+        else:
+            rospy.loginfo("Invalid Name of topic Flag")
 
     @property
     def subTopicImageSourceName(self):
@@ -88,16 +75,22 @@ class PersonPose:
 
     @subTopicImageSourceName.setter
     def subTopicImageSourceName(self, value):
-        self._subTopicImageSourceName = value
+        if value:
+            self._subTopicImageSourceName = value
+        else:
+            rospy.loginfo("Invalid Name of topic ImageSource")
 
     @property
     def pubTopicStatusNodeName(self):
         """The pubTopicStatusNodeName property."""
         return self._pubTopicStatusNodeName
-    @pubTopicStatusNodeName.setter
 
+    @pubTopicStatusNodeName.setter
     def pubTopicStatusNodeName(self, value):
-        self._pubTopicStatusNodeName = value        
+        if value:
+            self._pubTopicStatusNodeName = value
+        else:
+            rospy.loginfo("Invalid Name of topic Status")
 
     @property
     def pubTopicDataNodeName(self):
@@ -106,36 +99,13 @@ class PersonPose:
 
     @pubTopicDataNodeName.setter
     def pubTopicDataNodeName(self, value):
-        self._pubTopicDataNodeName = value
-
-    @property
-    def pubTopicDataNode(self):
-        """The pubTopicdataNode property."""
-        return self._pubTopicDataNode
-
-    @pubTopicDataNode.setter
-    def pubTopicDataNode(self, value):
-        self._pubTopicDataNode = value
-
-    @property
-    def dataReceivedTopic1(self):
-        """The dataReceivedTopic1 property."""
-        return self._dataReceivedTopic1
-
-    @dataReceivedTopic1.setter
-    def dataReceivedTopic1(self, value):
-        self._dataReceivedTopic1 = value        
-
-    @property
-    def dataReceivedTopic2(self):
-        """The dataReceivedTopic2 property."""
-        return self._dataReceivedTopic2
-
-    @dataReceivedTopic2.setter
-    def dataReceivedTopic2(self, value):
-        self._dataReceivedTopic2 = value
+        if value:
+            self._pubTopicDataNodeName = value
+        else:
+            rospy.loginfo("Invalid Name of topic Data")
 
     """ Methods and Actions"""
+
     def find_pose(self, draw=True) -> None:
         imgRGB = cv.cvtColor(self.cvFrame, cv.COLOR_BGR2RGB)
         self.results = self.pose.process(imgRGB)
@@ -151,7 +121,6 @@ class PersonPose:
         contador = 0
         if self.results.pose_landmarks:
             for id, lm in enumerate(self.results.pose_landmarks.landmark):
-                #print(f"id {id} x: {lm.x} y: {lm.y}")
                 dataPoint.x = lm.x
                 dataPoint.y = lm.y
                 dataPoint.z = lm.z
@@ -159,41 +128,47 @@ class PersonPose:
                 dataPose.position = dataPoint
                 dataPose.visibility = lm.visibility
                 if id == 0 or id == 15 or id == 16 or id == 11 or id == 12:
-                    if lm.visibility>0.5:
+                    if lm.visibility > 0.5:
                         contador += 1
                 h, w, c = self.cvFrame.shape
                 cx, cy = int(lm.x * w), int(lm.y * h)
                 lmAux.poses.append(deepcopy(dataPose))
-                #if draw:
-                #    cv.circle(self.cvFrame, (cx, cy), 5, (255, 0, 0), cv.FILLED)
             if contador >= 3:
                 self.readyCapturePose = True
             else:
                 self.readyCapturePose = False
+        if len(self.cvFrame) > 0:
+            cv.namedWindow("IMAGE_FROM_PERSON_POSE", cv.WINDOW_NORMAL)
+            cv.moveWindow("IMAGE_FROM_PERSON_POSE", 1280, 0)
+            cv.imshow("IMAGE_FROM_PERSON_POSE", self.cvFrame)
+            cv.resizeWindow("IMAGE_FROM_PERSON_POSE", 640, 480)
+            cv.waitKey(1)
         self.pubTopicDataNode.publish(lmAux)
 
     def image_source_callback(self, msg) -> None:
-        self._dataReceivedTopic1 = True
+        self.dataReceivedTopic1 = True
         try:
-            self._cvFrame = BRIDGE.imgmsg_to_cv2(msg, "bgr8")
+            self.cvFrame = BRIDGE.imgmsg_to_cv2(msg, "bgr8")
         except CvBridgeError as e:
             print(f"[ERROR] {e}")
 
-    def flag_callback(self,msg) -> None:
-        self._dataReceivedTopic2 = True
-        self._statusFlag = msg
+    def flag_callback(self, msg) -> None:
+        self.dataReceivedTopic2 = True
+        self.statusFlag = msg
 
     def start_subscribers(self) -> None:
-        rospy.Subscriber(self._subTopicImageSourceName, Image, self.image_source_callback)
-        rospy.Subscriber(self._subTopicFlagName,Bool, self.flag_callback)
+        rospy.Subscriber(self._subTopicImageSourceName,
+                        Image, self.image_source_callback)
+        rospy.Subscriber(self._subTopicFlagName, Bool, self.flag_callback)
 
     def start_publishers(self) -> None:
-        self._pubTopicStatusNode = rospy.Publisher(self._pubTopicStatusNodeName, Bool, queue_size=10)
-        self._pubTopicDataNode = rospy.Publisher(self._pubTopicDataNodeName,personPos, queue_size=10)
+        self.pubTopicStatusNode = rospy.Publisher(
+            self._pubTopicStatusNodeName, Bool, queue_size=10)
+        self.pubTopicDataNode = rospy.Publisher(
+            self._pubTopicDataNodeName, personPos, queue_size=10)
 
 
 def main():
-    # Don't forget to remove this test mode
     system('clear')
     time.sleep(1)
     print("#"*70)
@@ -201,7 +176,6 @@ def main():
     print("#"*70)
     rospy.init_node(NODE_NAME)
     rospy.loginfo(f"NODO {NODE_NAME} INICIADO.")
-    #rate = rospy.Rate(1.0)
     """Inicializar el objeto object_pos"""
     objNode = PersonPose()
     objNode.subTopicFlagName = TOPIC_S1_NAME
@@ -210,28 +184,20 @@ def main():
     objNode.pubTopicDataNodeName = TOPIC_P2_NAME
     objNode.start_subscribers()
     objNode.start_publishers()
-    time.sleep(2)
+    time.sleep(1)
     INFO1 = True
     INFO2 = True
     while not rospy.is_shutdown():
-        # or objNode._dataReceivedTopic2 == False:
-        if not objNode.dataReceivedTopic1  and not objNode.dataReceivedTopic2 and INFO2:
+        if (not objNode.dataReceivedTopic1 or not objNode.dataReceivedTopic2) and INFO2:
             print("[WARNING] Datos no recibidos")
             INFO2 = False
-        else:
-            #time.sleep(1.5)
+        elif objNode.cvFrame:
             objNode.find_pose()
             objNode.find_position(draw=False)
-            cv.imshow("Image from Node PersonPose", objNode.cvFrame)
-            cv.waitKey(1)
-            objNode._pubTopicStatusNode.publish(objNode.readyCapturePose)
+            objNode.pubTopicStatusNode.publish(objNode.readyCapturePose)
             if objNode.readyCapturePose and INFO1:
                 rospy.loginfo("READY TO CAPTURE DATA")
                 INFO1 = False
-            #else:
-            #    rospy.loginfo("NOT READY TO CAPTURE DATA")
-            #    INFO1 = True
-        #rate.sleep()
     rospy.spin()
 
 

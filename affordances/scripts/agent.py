@@ -1,27 +1,31 @@
 #!/usr/bin/env python3
 
 # Importar modulos
+from cv2 import sqrt
 import rospy
 from rospy.exceptions import ROSException
 from std_msgs.msg import Bool
-from affordances.msg import objectData
-from affordances.msg import personPos
+from affordances.msg import personPos, objectData, affordance
 import time
 import os
 import csv
 from sklearn.preprocessing import StandardScaler
 import numpy as np
 
-import pyttsx3
-engine = pyttsx3.init(driverName='espeak')
-rate = engine.getProperty('rate')
-engine.setProperty('rate', rate-50)
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument('-m', '--mode', type=int,
+                    help='1 Trainging Mode - 2 Prediction Mode', default=1)
 
-
-#LISTVOICE = []
+args = parser.parse_args()
 
 # FILE DATASET
-CSV_FILE = open('/home/kmedrano101/catkin_ws/src/affordances/data/dataset.csv', 'a')
+CSV_FILE_1 = open(
+    '/home/kmedrano101/catkin_ws/src/affordances/data/DSAllPoints.csv', 'a')
+CSV_FILE_2 = open(
+    '/home/kmedrano101/catkin_ws/src/affordances/data/DS13Points.csv', 'a')
+CSV_FILE_3 = open(
+    '/home/kmedrano101/catkin_ws/src/affordances/data/DS9Points.csv', 'a')
 # Parametros y variables
 try:
     rospy.get_param_names()
@@ -38,67 +42,38 @@ TOPIC_S3_NAME = rospy.get_param(
     PACKAGE_NAME+"publishers/status_object_pos/topic", default="/affordances/status_object_pos")
 TOPIC_S4_NAME = rospy.get_param(
     PACKAGE_NAME+"publishers/status_person_pose/topic", default="/affordances/status_person_pose")
+TOPIC_P1_NAME = rospy.get_param(
+    PACKAGE_NAME+"publishers/utility/topic", default="/affordances/utilities")
 
+# Class Agent
 
-# Clase
-
-class train_ML:
-    """train M.L. object"""
+class Agent:
+    """Agent M.L. object"""
 
     def __init__(self):
-        self._dataPersonPose = personPos()		# Only Private no external access
-        self._dataObjectPose = objectData()		# Only Private no external access
-        self._statusPose = False	            # Only Private no external access
-        self._statusObject = False	            # Only Private no external access
-        self._subTopicPersonPoseName = None	    # Only Private no external access
-        self._subTopicObjectPoseName = None	    # Only Private no external access
-        self._subTopicStatusPoseName = None	    # Only Private no external access
-        self._subTopicStatusObjectName = None	# Only Private no external access
-        self._FlagCaptureData = 0
-        self.sTime = 0.85
+        self._subTopicPersonPoseName = None
+        self._subTopicObjectPoseName = None
+        self._subTopicStatusPoseName = None
+        self._subTopicStatusObjectName = None
+        self._pubTopicAffordancesName = None
+        self.dataPersonPose = personPos()
+        self.dataObjectPose = objectData()
+        self.statusPose = False
+        self.statusObject = False
+        self.pubTopicAffordances = None
+        self.FlagCaptureData = 0
+        self.sTime = 0.95
         self.iTime = 0
         self.aTime = time.time()
         self.VectorData = []
+        self.VectorData1 = []
+        self.VectorData2 = []
         self.Counter = 0
         self.scaler = StandardScaler()
         self.ResetCounterCap = False
+        self.numeroDatos = 0
+
     """ Properties """
-    
-    @property
-    def dataPersonPose(self):
-        """The dataPersonPose property."""
-        return self._dataPersonPose
-    @dataPersonPose.setter
-    def dataPersonPose(self, value):
-        self._dataPersonPose = value
-
-    @property
-    def dataObjectPose(self):
-        """The dataObjectPose property."""
-        return self._dataObjectPose
-
-    @dataObjectPose.setter
-    def dataObjectPose(self, value):
-        self._dataObjectPose = value
-
-    @property
-    def statusPose(self):
-        """The statusPose property."""
-        return self._statusPose
-
-    @statusPose.setter
-    def statusPose(self, value):
-        self._statusPose = value
-
-    @property
-    def statusObject(self):
-        """The statusObject property."""
-        return self._statusObject
-
-    @statusObject.setter
-    def statusObject(self, value):
-        self._statusObject = value
-
     @property
     def subTopicPersonPoseName(self):
         """The subTopicPersonPoseName property."""
@@ -106,7 +81,10 @@ class train_ML:
 
     @subTopicPersonPoseName.setter
     def subTopicPersonPoseName(self, value):
-        self._subTopicPersonPoseName = value    
+        if value:
+            self._subTopicPersonPoseName = value
+        else:
+            rospy.loginfo("Invalid Name of topic PersonPose")
 
     @property
     def subTopicObjectPoseName(self):
@@ -115,7 +93,10 @@ class train_ML:
 
     @subTopicObjectPoseName.setter
     def subTopicObjectPoseName(self, value):
-        self._subTopicObjectPoseName = value
+        if value:
+            self._subTopicObjectPoseName = value
+        else:
+            rospy.loginfo("Invalid Name of topic ObjectPose")
 
     @property
     def subTopicStatusPoseName(self):
@@ -124,7 +105,10 @@ class train_ML:
 
     @subTopicStatusPoseName.setter
     def subTopicStatusPoseName(self, value):
-        self._subTopicStatusPoseName = value
+        if value:
+            self._subTopicStatusPoseName = value
+        else:
+            rospy.loginfo("Invalid Name of topic StatusPoseName")
 
     @property
     def subTopicStatusObjectName(self):
@@ -133,81 +117,140 @@ class train_ML:
 
     @subTopicStatusObjectName.setter
     def subTopicStatusObjectName(self, value):
-        self._subTopicStatusObjectName = value  
+        if value:
+            self._subTopicStatusObjectName = value
+        else:
+            rospy.loginfo("Invalid Name of topic StatusObject")
+
+    @property
+    def pubTopicAffordancesName(self):
+        """The subTopicStatusObjectName property."""
+        return self._pubTopicAffordancesName
+
+    @pubTopicAffordancesName.setter
+    def pubTopicAffordancesName(self, value):
+        if value:
+            self._pubTopicAffordancesName = value
+        else:
+            rospy.loginfo("Invalid Name of topic Affordances")
 
     """ Methods and Actions"""
 
     def data_pose_callback(self, msg) -> None:
-        self._dataPersonPose = msg
-        #print("DataPose",self._dataPersonPose)
+        self.dataPersonPose = msg
 
     def data_object_callback(self, msg) -> None:
-        self._dataObjectPose = msg
-        #print("DataObject",self._dataObjectPose)
+        self.dataObjectPose = msg
 
     def status_pose_callback(self, msg) -> None:
-        self._statusPose = msg.data
-        #print("Data status pose",self.statusPose)
+        self.statusPose = msg.data
 
     def status_object_callback(self, msg) -> None:
-        self._statusObject = msg.data
-        #print("Data status object",self.statusObject)
+        self.statusObject = msg.data
 
     def start_subscribers(self) -> None:
-        rospy.Subscriber(self._subTopicPersonPoseName, personPos, self.data_pose_callback)
-        rospy.Subscriber(self._subTopicObjectPoseName, objectData, self.data_object_callback)
-        rospy.Subscriber(self._subTopicStatusPoseName, Bool, self.status_pose_callback)
-        rospy.Subscriber(self._subTopicStatusObjectName, Bool, self.status_object_callback)
+        rospy.Subscriber(self._subTopicPersonPoseName,
+                        personPos, self.data_pose_callback)
+        rospy.Subscriber(self._subTopicObjectPoseName,
+                        objectData, self.data_object_callback)
+        rospy.Subscriber(self._subTopicStatusPoseName,
+                        Bool, self.status_pose_callback)
+        rospy.Subscriber(self._subTopicStatusObjectName,
+                        Bool, self.status_object_callback)
+
+    def start_publishers(self) -> None:
+        self._pubTopicAffordances = rospy.Publisher(
+            self._pubTopicAffordancesName, affordance, queue_size=10)
 
     def save_data_set(self) -> None:
-        # Considerar descartar los datos en caso de no continuidad correcta de las mismas
         # Lista de Puntos para POSE de interes
-        PosePoints = [0,11,12,13,14,15,16,23,24,25,26,27,28] # Realizar analisis de reduccion de dimensionalidad
-        temp = []
-        temp2 = []
-        if self._statusObject == True and self._statusPose == True:
+        # Realizar analisis de reduccion de dimensionalidad
+        PosePoints = [0, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28]
+        PosePoints2 = [0, 11, 12, 15, 16, 23, 24, 27, 28]
+        PosePointsALL = []
+        PosePointsDistances = [0, 19, 20, 31, 32]  # Distancias de interes
+        temp, temp2 = [], []
+        temp3, distans = [], []
+        if self.statusObject == True and self.statusPose == True:
             self.ResetCounterCap = True
             self.aTime = time.time()
             if self.aTime > (self.sTime+self.iTime):
-                print("Capturing Data...") 
+                print("Capturing Data...")
                 self.iTime = time.time()
                 if self.Counter <= 5:
+                    # Datos objeto
+                    temp3 = [self.dataObjectPose.x,
+                            self.dataObjectPose.y, self.dataObjectPose.velocity]
+                    temp3 = np.array(temp3)
+                    temp3 = self.scaler.fit_transform(
+                        temp3[:, np.newaxis]).tolist()
+                    temp3 = [temp3[0][0], temp3[1][0], temp3[2][0]]
                     # Guardando datos de Human Pose
-                    for pose in self._dataPersonPose.poses:
+                    for pose in self.dataPersonPose.poses:
+                        # Tomando las distancias
+                        if pose.id_pos in PosePointsDistances:
+                            value = np.sqrt(
+                                (temp3[0]-float(pose.position.x))**2+(temp3[1]-float(pose.position.y))**2)
+                            distans.append(value)
+                        # Tomando todas las Pose
+                        PosePointsALL += [pose.position.x, pose.position.y,
+                                        pose.position.z, pose.visibility]
+                        # Tomando puntos de interes 1
                         if pose.id_pos in PosePoints:
-                            temp += [pose.position.x, pose.position.y, pose.position.z, pose.visibility]
-                    # Agragando datos de Pose Object // Posibilidad de agregar distancia objeto a puntos claves del cuerpo
-                    classObject = 1 if self.dataObjectPose.classObject == "laptop" else 3
-                    temp2 = [self.dataObjectPose.x,self.dataObjectPose.y, self.dataObjectPose.velocity]
-                    temp2 = np.array(temp2)
-                    temp2 = self.scaler.fit_transform(temp2[:,np.newaxis]).tolist()
-                    temp2 = [temp2[0][0],temp2[1][0],temp2[2][0],classObject]
-                    self.VectorData.extend(temp)
-                    self.VectorData.extend(temp2)
+                            temp += [pose.position.x, pose.position.y,
+                                    pose.position.z, pose.visibility]
+                        # Tomando puntos de interes 2
+                        if pose.id_pos in PosePoints2:
+                            temp2 += [pose.position.x, pose.position.y,
+                                    pose.position.z, pose.visibility]
+                    temp3.extend(distans)
+                    self.VectorData.extend(PosePointsALL)
+                    self.VectorData.extend(temp3)
+                    self.VectorData1.extend(temp)
+                    self.VectorData1.extend(temp3)
+                    self.VectorData2.extend(temp2)
+                    self.VectorData2.extend(temp3)
                     self.Counter += 1
                 else:
+                    classObject = 4 if self.dataObjectPose.classObject == "bed" else 6
+                    temp3.extend(["refrigerator", classObject])
+                    self.VectorData.extend(temp3)
+                    self.VectorData1.extend(temp3)
+                    self.VectorData2.extend(temp3)
                     value = input("Save data? y/n: ")
-                    if value == "y":    
-                        writer = csv.writer(CSV_FILE, delimiter=':', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+                    if value == "y" and len(self.VectorData) == 842:
+                        writer = csv.writer(
+                            CSV_FILE_1, delimiter=':', quotechar='"', quoting=csv.QUOTE_MINIMAL)
                         writer.writerow(self.VectorData)
-                        CSV_FILE.flush()
-                        os.fsync(CSV_FILE.fileno())
-                        rospy.loginfo("Saving Data ...")
-                        self.Counter = 0
-                        self.VectorData = []
-                        self.iTime = time.time()
+                        writer.writerow(self.VectorData1)
+                        writer.writerow(self.VectorData2)
+                        CSV_FILE_1.flush()
+                        os.fsync(CSV_FILE_1.fileno())
+                        CSV_FILE_2.flush()
+                        os.fsync(CSV_FILE_2.fileno())
+                        CSV_FILE_3.flush()
+                        os.fsync(CSV_FILE_3.fileno())
+                        print("[INFO] Saving Data...")
+                        self.numeroDatos += 1
+                        print("Numero Dato: ", self.numeroDatos)
                     else:
-                        print("Data does not save!")
-                        self.Counter = 0
-                print("Counter:",self.Counter)
-        if self.ResetCounterCap and self._statusObject == False:
+                        print("[INFO] Data does not save!")
+                    self.Counter = 0
+                    self.VectorData = []
+                    self.VectorData1 = []
+                    self.VectorData2 = []
+                print("DATA Counter:", self.Counter)
+        if self.ResetCounterCap and self.statusObject == False:
             self.Counter = 0
             self.VectorData = []
+            self.VectorData1 = []
+            self.VectorData2 = []
 
-## Actualizar captura de datos si se pierde la secuencia en caso de seguimiento de objeto
+    def prediction_mode(self) -> None:
+        pass
+
 
 def main():
-    # Don't forget to remove this test mode
     os.system('clear')
     time.sleep(1)
     print("#"*70)
@@ -215,28 +258,29 @@ def main():
     print("#"*70)
     rospy.init_node(NODE_NAME)
     rospy.loginfo(f"NODO {NODE_NAME} INICIADO.")
-    #rate = rospy.Rate(1.0)
-    """Inicializar el objeto train_ML"""
-    objNode = train_ML()
+
+    """Inicializar el objeto Agent"""
+    objNode = Agent()
     objNode.subTopicObjectPoseName = TOPIC_S1_NAME
     objNode.subTopicPersonPoseName = TOPIC_S2_NAME
     objNode.subTopicStatusObjectName = TOPIC_S3_NAME
     objNode.subTopicStatusPoseName = TOPIC_S4_NAME
+    objNode.pubTopicAffordancesName = TOPIC_P1_NAME
     objNode.start_subscribers()
-    #engine.say("I am a robot")
-    #engine.runAndWait()
-    time.sleep(3)
-    INI = 0
+    objNode.start_publishers()
+    time.sleep(1)
+    op = args.mode
+    if op == 1:
+        print("Trainging mode")
+    else:
+        print("Prediction mode")
     while not rospy.is_shutdown():
-        if INI == 0:
-            print(f"OPCIONES DE {NODE_NAME} NODE: \n\t1.- MODO APRENDIZAJE (CAPTURA DE DATOS)\n\t2.- MODO IDENTIFICAR")
-            op = input("Opcion: ")
-            INI = 1
-        if op == "1":
+        if op == 1:
             objNode.save_data_set()
-        if op == "2":
-            pass
+        else:
+            objNode.prediction_mode()
     rospy.spin()
+
 
 if __name__ == '__main__':
     try:

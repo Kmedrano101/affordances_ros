@@ -34,38 +34,39 @@ OPENCV_OBJECT_TRACKERS = {
     "kcf": cv.TrackerKCF_create,
     "mil": cv.TrackerMIL_create
 }
-# Test these objects tracker
+
 BRIDGE = CvBridge()
 
-# Clase
+# Class ObjectPos
+
 
 class ObjectPos:
     """Person object"""
 
     def __init__(self):
-        self._objectPos = None					# Only Private no external access
-        self._cvFrame = []						# Only Private no external access
-        self._subTopicBorderBoxesName = None 	# Private and external access
-        self._subTopicImageName = None 			# Private and external access
-        self._pubTopicStatusNodeName = None		# Private and external access
-        self._pubTopicDataNodeName = None	    # Private and external access
-        self._pubTopicStatusNode = None			# Private and external access
-        self._pubTopicDataNode = None	        # Private and external access
-        self._statusNode = False				# Private and external access
-        self._borderBoxes = ()					# Only Private no external access
-        self._dataReceivedTopic1 = False		# Private and external access
-        self._dataReceivedTopic2 = False		# Private and external access
-        self._dataPosReady = False				# Only Private no external access
-        self._posObject = ()					# Only Private no external access
-        self._sTime = 0.1
-        self._iTime = 0
-        self._fValue = 0
-        self._TrackTime = 11.5
-        self._TrackUpdateTime = 0
-        self._X1 = 0
-        self._Y1 = 0
-        self._ListVelocities = []
-        self._velocityObject = 0
+        self._subTopicBorderBoxesName = None
+        self._subTopicImageName = None
+        self._pubTopicStatusNodeName = None
+        self._pubTopicDataNodeName = None
+        self.pubTopicStatusNode = None
+        self.pubTopicDataNode = None
+        self.objectPos = None
+        self.cvFrame = []
+        self.statusNode = False
+        self.borderBoxes = ()
+        self.dataReceivedTopic1 = False
+        self.dataReceivedTopic2 = False
+        self.dataPosReady = False
+        self.posObject = ()
+        self.sTime = 0.1
+        self.iTime = 0
+        self.fValue = 0
+        self.TrackTime = 9.5
+        self.TrackUpdateTime = 0
+        self.X1 = 0
+        self.Y1 = 0
+        self.ListVelocities = []
+        self.velocityObject = 0
         self.data = objectData()
         self.statusTracking = False
         self.resetTracker = False
@@ -81,7 +82,10 @@ class ObjectPos:
 
     @subTopicBorderBoxesName.setter
     def subTopicBorderBoxesName(self, value):
-        self._subTopicBorderBoxesName = value
+        if value:
+            self._subTopicBorderBoxesName = value
+        else:
+            rospy.loginfo("Invalid Name of topic BorderBoxes")
 
     @property
     def subTopicImageName(self):
@@ -90,7 +94,10 @@ class ObjectPos:
 
     @subTopicImageName.setter
     def subTopicImageName(self, value):
-        self._subTopicImageName = value
+        if value:
+            self._subTopicImageName = value
+        else:
+            rospy.loginfo("Invalid Name of topic Image")
 
     @property
     def pubTopicStatusNodeName(self):
@@ -99,7 +106,10 @@ class ObjectPos:
 
     @pubTopicStatusNodeName.setter
     def pubTopicStatusNodeName(self, value):
-        self._pubTopicStatusNodeName = value
+        if value:
+            self._pubTopicStatusNodeName = value
+        else:
+            rospy.loginfo("Invalid Name of topic Status")
 
     @property
     def pubTopicDataNodeName(self):
@@ -108,142 +118,58 @@ class ObjectPos:
 
     @pubTopicDataNodeName.setter
     def pubTopicDataNodeName(self, value):
-        self._pubTopicDataNodeName = value
-
-    @property
-    def pubTopicDataNode(self):
-        """The pubTopicDataNode property."""
-        return self._pubTopicDataNode
-
-    @pubTopicDataNode.setter
-    def pubTopicDataNode(self, value):
-        self._pubTopicDataNode = value
-
-    @property
-    def pubTopicStatusNode(self):
-        """The pubTopicStatusNode property."""
-        return self._pubTopicStatusNode
-
-    @pubTopicStatusNode.setter
-    def pubTopicStatusNode(self, value):
-        self._pubTopicStatusNode = value
-
-    @property
-    def statusNode(self):
-        """The statusNode property."""
-        return self._statusNode
-
-    @statusNode.setter
-    def statusNode(self, value):
-        self._statusNode = value
-
-    @property
-    def sTime(self):
-        """The sTime property."""
-        return self._sTime
-
-    @sTime.setter
-    def sTime(self, value):
-        self._sTime = value
-
-    @property
-    def iTime(self):
-        """The iTime property."""
-        return self._iTime
-
-    @iTime.setter
-    def iTime(self, value):
-        self._iTime = value
-
-    @property
-    def fValue(self):
-        """The fValue property."""
-        return self._fValue
-
-    @fValue.setter
-    def fValue(self, value):
-        self._fValue = value    
-
-    @property
-    def X1(self):
-        """The X1 property."""
-        return self._X1
-
-    @X1.setter
-    def X1(self, value):
-        self._X1 = value
-
-    @property
-    def Y1(self):
-        """The Y1 property."""
-        return self._Y1
-
-    @Y1.setter
-    def Y1(self, value):
-        self._Y1 = value
-
-    @property
-    def ListVelocities(self):
-        """The ListVelocities property."""
-        return self._ListVelocities
-
-    @ListVelocities.setter
-    def ListVelocities(self, value):
-        self._ListVelocities = value
-
-    @property
-    def velocityObject(self):
-        """The velocityObject property."""
-        return self._velocityObject
-
-    @velocityObject.setter
-    def velocityObject(self, value):
-        self._velocityObject = value
+        if value:
+            self._pubTopicDataNodeName = value
+        else:
+            rospy.loginfo("Invalid Name of topic Data")
 
     """ Methods and Actions"""
 
     def image_source_callback(self, msg) -> None:
-        self._dataReceivedTopic1 = True
+        self.dataReceivedTopic1 = True
         try:
-            self._cvFrame = BRIDGE.imgmsg_to_cv2(msg, "bgr8")
+            self.cvFrame = BRIDGE.imgmsg_to_cv2(msg, "bgr8")
+            #self._cvFrame = cv.resize(self._cvFrame, (416, 416))
         except CvBridgeError as e:
             print(f"[ERROR] {e}")
 
     def border_boxes_callback(self, msg) -> None:
-        self._dataReceivedTopic2 = True
-        self._borderBoxes = msg.bounding_boxes
+        self.dataReceivedTopic2 = True
+        self.borderBoxes = msg.bounding_boxes
 
     def start_subscribers(self) -> None:
-        rospy.Subscriber(self._subTopicImageName, Image, self.image_source_callback)
-        rospy.Subscriber(self._subTopicBorderBoxesName, BoundingBoxes, self.border_boxes_callback)
+        rospy.Subscriber(self._subTopicImageName, Image,
+                        self.image_source_callback)
+        rospy.Subscriber(self._subTopicBorderBoxesName,
+                        BoundingBoxes, self.border_boxes_callback)
 
     def start_publishers(self) -> None:
-        self._pubTopicStatusNode = rospy.Publisher(
+        self.pubTopicStatusNode = rospy.Publisher(
             self._pubTopicStatusNodeName, Bool, queue_size=10)
-        self._pubTopicDataNode = rospy.Publisher(self._pubTopicDataNodeName, objectData, queue_size=10)
+        self.pubTopicDataNode = rospy.Publisher(
+            self._pubTopicDataNodeName, objectData, queue_size=10)
 
-    # TEST COMMENTS
-    # Actualizar posicion cada cierto tiempo con la condicion de encontrar el mismo objeto, tracker se queda perdido en otra posicion que no es la real
     def get_pos(self) -> None:
         """ Funcion para obtener la posicion central del objeto a realizar el tracking"""
         pos = []
-        self._dataPosReady = False
-        Objetos = ["sofa"]   #["cup","bicycle","sofa","chair","wine glass","cell phone","laptop","book"]   
-        if self._dataReceivedTopic2 and not self.statusTracking:
-            for box in self._borderBoxes:
-                if box.Class in Objetos: 
+        self.dataPosReady = False
+        # ["refrigerator","cup","bicycle","sofa","chair","wine glass","cell phone","laptop","book"]
+        Objetos = ["tvmonitor"]
+        if self.dataReceivedTopic2 and not self.statusTracking:
+            for box in self.borderBoxes:
+                if box.Class in Objetos:
                     pos.append(box.xmin-2)
                     pos.append(box.ymin-2)
                     pos.append(abs(box.ymax - box.ymin)+2)
                     pos.append(abs(box.xmax - box.xmin)+2)
-                    self._dataPosReady = True
+                    self.dataPosReady = True
                     rospy.loginfo("Object detected")
-                    self._posObject = tuple(pos)
-                    self._borderBoxes = []
+                    self.posObject = tuple(pos)
+                    self.borderBoxes = []
                     self.ClassObject = box.Class
                     break
 
-    def find_velocity(self,x,y) -> None:
+    def find_velocity(self, x, y) -> None:
         if self.fValue == 0:
             self.X1, self.Y1 = x, y
             self.fValue = 1
@@ -253,72 +179,72 @@ class ObjectPos:
             V = abs(self.X1 - X2) + abs(self.Y1 - Y2)
             self.ListVelocities.append(V)
             if len(self.ListVelocities) >= 5:
-                self.velocityObject = (sum(self.ListVelocities)/len(self.ListVelocities)) * 2 # FPS In this case is just per 1s
+                # FPS In this case is just per 1s
+                self.velocityObject = (
+                    sum(self.ListVelocities)/len(self.ListVelocities)) * 2
                 self.ListVelocities = []
             self.fValue = 0
             self.iTime = time.time()
 
     def process_img(self) -> None:
-        # Verificar y validar datos recibidos enfocar seguimiento de objeto
-        #success = False
         if self.resetTracker and not self.auxReset:
-                self.restart_Tracker()
-                self.auxReset = True
-        if self._dataPosReady and self._dataReceivedTopic1 and not self._statusNode:
+            self.restart_Tracker()
+            self.auxReset = True
+        if self.dataPosReady and self.dataReceivedTopic1 and not self.statusNode:
             self.statusTracking = True
-            if self._posObject:
-                self.TRACKER.init(self._cvFrame, self._posObject)
+            if self.posObject:
+                self.TRACKER.init(self.cvFrame, self.posObject)
                 rospy.loginfo("Tracker started.")
                 self.auxReset = False
-            self._statusNode = True
+            self.statusNode = True
         if self.statusTracking:
             try:
-                (success, box) = self.TRACKER.update(self._cvFrame)
+                (success, box) = self.TRACKER.update(self.cvFrame)
                 if success:
                     (x, y, w, h) = [int(v) for v in box]
-                    cv.rectangle(self._cvFrame, (x, y), (x + h, y + w), (0, 255, 0), 2)
+                    cv.rectangle(self.cvFrame, (x, y),
+                                (x + h, y + w), (0, 255, 0), 2)
                     X = int((x*2+h)/2)
                     Y = int((y*2+w)/2)
-                    self.find_velocity(X,Y)
+                    self.find_velocity(X, Y)
                     self.data.x = X
                     self.data.y = Y
                     self.data.velocity = self.velocityObject
                     self.data.classObject = self.ClassObject
-                    cv.circle(self._cvFrame, (X,Y), 4, (255, 0, 0), -1)
+                    cv.circle(self.cvFrame, (X, Y), 4, (255, 0, 0), -1)
                 else:
                     self.resetTracker = True
             except Exception as e:
-                print("Error updating IMG", e)
+                print("[Error] updating IMG", e)
                 pass
             self.aTime = time.time()
-            if self.aTime > (self._TrackTime+self._TrackUpdateTime):
-                self._TrackUpdateTime = time.time()
+            if self.aTime > (self.TrackTime+self.TrackUpdateTime):
+                self.TrackUpdateTime = time.time()
                 self.resetTracker = True
-                
-        if len(self._cvFrame)>0:
-            cv.putText(self._cvFrame, f'Velocity: {int(self.velocityObject)}', (40, 70), cv.FONT_HERSHEY_PLAIN,
+
+        if len(self.cvFrame) > 0:
+            cv.putText(self.cvFrame, f'Velocity: {int(self.velocityObject)}', (40, 70), cv.FONT_HERSHEY_PLAIN,
                     3, (255, 0, 0), 3)
-            cv.imshow("Image from Node ObjectPos", self._cvFrame)
+            cv.namedWindow("IMAGE_FROM_OBJECT_POS", cv.WINDOW_NORMAL)
+            cv.moveWindow("IMAGE_FROM_OBJECT_POS", 640, 0)
+            cv.imshow("IMAGE_FROM_OBJECT_POS", self.cvFrame)
+            cv.resizeWindow("IMAGE_FROM_OBJECT_POS", 640, 480)
             cv.waitKey(1)
-        
 
     def restart_Tracker(self) -> None:
-        self._statusNode = False
-        #self.TRACKER.release() 
+        self.statusNode = False
         self.TRACKER = OPENCV_OBJECT_TRACKERS["csrt"]()
-        self._velocityObject = 0
+        self.velocityObject = 0
         self.statusTracking = False
         self.resetTracker = False
         rospy.loginfo("Tracker Reset.")
-        self._dataPosReady = False
-        self._posObject = ()
-        self._borderBoxes = []
-        self._TrackUpdateTime = time.time()
-        #self._cvFrame = []	
+        self.dataPosReady = False
+        self.posObject = ()
+        self.borderBoxes = []
+        self.TrackUpdateTime = time.time()
 
 
 def main():
-    # Don't forget to remove this test mode
     system('clear')
     time.sleep(1)
     print("#"*70)
@@ -335,17 +261,15 @@ def main():
     objNode.pubTopicDataNodeName = TOPIC_P2_NAME
     objNode.start_subscribers()
     objNode.start_publishers()
-    time.sleep(2)
+    time.sleep(1)
     while not rospy.is_shutdown():
-        # or objNode._dataReceivedTopic2 == False:
-        if objNode._dataReceivedTopic1 == False and objNode._dataReceivedTopic2 == False:
+        if objNode.dataReceivedTopic1 == False and objNode.dataReceivedTopic2 == False:
             print("[WARNING] Datos no recibidos")
         else:
             objNode.get_pos()
             objNode.process_img()
         objNode.pubTopicStatusNode.publish(objNode.statusNode)
         objNode.pubTopicDataNode.publish(objNode.data)
-        #rate.sleep()
     rospy.spin()
 
 

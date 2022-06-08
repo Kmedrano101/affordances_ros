@@ -27,24 +27,24 @@ TOPIC_P1_NAME = rospy.get_param(
 TOPIC_P2_NAME = rospy.get_param(
     PACKAGE_NAME+"publishers/flag/topic", default="/affordances/flag")
 
-# Clase
+# Clase PersonObject
 
 
 class PersonObject:
     """Person object"""
 
     def __init__(self):
-        self._subTopicBoundingBoxesName = ""		# Private and external access
-        self._subTopicFoundObjectsName = ""			# Private and external access
-        self._pubTopicFlag = None					# Private and external access
-        self._pubTopicObjectBoxes = None			# Private and external access
-        self._pubTopicObjectBoxesName = ""			# Private and external access
-        self._pubTopicFlagName = ""					# Private and external access
-        self._flagSet = False						# Only Private no external access
-        self._nobjects = 0							# Only Private no external access
-        self._bounding_boxes = []					# Only Private no external access
-        self._dataReceivedTopic1 = False			# Private and external access
-        self._dataReceivedTopic2 = False			# Private and external access
+        self._subTopicBoundingBoxesName = ""
+        self._subTopicFoundObjectsName = ""
+        self._pubTopicObjectBoxesName = ""
+        self._pubTopicFlagName = ""
+        self.pubTopicFlag = None
+        self.pubTopicObjectBoxes = None
+        self.flagSet = False
+        self.nobjects = 0
+        self.bounding_boxes = []
+        self.dataReceivedTopic1 = False
+        self.dataReceivedTopic2 = False
 
     """Propierties"""
     @property
@@ -54,7 +54,10 @@ class PersonObject:
 
     @subTopicBoundingBoxesName.setter
     def subTopicBoundingBoxesName(self, value):
-        self._subTopicBoundingBoxesName = value
+        if value:
+            self._subTopicBoundingBoxesName = value
+        else:
+            rospy.loginfo("Invalid Name of topic BoundingBoxes")
 
     @property
     def subTopicFoundObjectsName(self):
@@ -63,7 +66,10 @@ class PersonObject:
 
     @subTopicFoundObjectsName.setter
     def subTopicFoundObjectsName(self, value):
-        self._subTopicFoundObjectsName = value
+        if value:
+            self._subTopicFoundObjectsName = value
+        else:
+            rospy.loginfo("Invalid Name of topic FoundObjects")
 
     @property
     def pubTopicObjectBoxesName(self):
@@ -72,16 +78,10 @@ class PersonObject:
 
     @pubTopicObjectBoxesName.setter
     def pubTopicObjectBoxesName(self, value):
-        self._pubTopicObjectBoxesName = value
-
-    @property
-    def pubTopicFlag(self):
-        """The pubTopicFlag property."""
-        return self._pubTopicFlag
-
-    @pubTopicFlag.setter
-    def pubTopicFlag(self, value):
-        self._pubTopicFlag = value
+        if value:
+            self._pubTopicObjectBoxesName = value
+        else:
+            rospy.loginfo("Invalid Name of topic ObjectBoxes")
 
     @property
     def pubTopicFlagName(self):
@@ -90,80 +90,57 @@ class PersonObject:
 
     @pubTopicFlagName.setter
     def pubTopicFlagName(self, value):
-        self._pubTopicFlagName = value
-
-    @property
-    def pubTopicObjectBoxes(self):
-        """The pubTopicObjectBoxes property."""
-        return self._pubTopicObjectBoxes
-
-    @pubTopicObjectBoxes.setter
-    def pubTopicObjectBoxes(self, value):
-        self._pubTopicObjectBoxes = value
-
-    @property
-    def flagSet(self):
-        """The flagSet property."""
-        return self._flagSet
-
-    @flagSet.setter
-    def flagSet(self, value):
-        self._flagSet = value
-
-    @property
-    def nobjects(self):
-        """The nobjects property."""
-        return self._nobjects
-
-    @nobjects.setter
-    def nobjects(self, value):
-        self._nobjects = value
+        if value:
+            self._pubTopicFlagName = value
+        else:
+            rospy.loginfo("Invalid Name of topic Flag")
 
     """ Methods and Actions"""
 
     def bouding_boxes_callback(self, msg) -> None:
-        self._dataReceivedTopic1 = True
-        self._bounding_boxes = msg
+        self.dataReceivedTopic1 = True
+        self.bounding_boxes = msg
         #rospy.loginfo("CallBack Bounding Boxes")
-        for num, box in enumerate(self._bounding_boxes.bounding_boxes, start=1):
+        for num, box in enumerate(self.bounding_boxes.bounding_boxes, start=1):
             rospy.loginfo(f"Nombre de objeto {num}: {box.Class}")
 
     def number_objects_callback(self, msg) -> None:
-        self._dataReceivedTopic2 = True
-        self._nobjects = msg.count
-        #rospy.loginfo(f"Numero de objetos detectados: {self._nobjects}")
+        self.dataReceivedTopic2 = True
+        self.nobjects = msg.count
 
     def start_subscribers(self) -> None:
-        rospy.Subscriber(self._subTopicBoundingBoxesName, BoundingBoxes, self.bouding_boxes_callback)
-        rospy.Subscriber(self._subTopicFoundObjectsName, ObjectCount, self.number_objects_callback)
+        rospy.Subscriber(self._subTopicBoundingBoxesName,
+                        BoundingBoxes, self.bouding_boxes_callback)
+        rospy.Subscriber(self._subTopicFoundObjectsName,
+                        ObjectCount, self.number_objects_callback)
 
     def start_publishers(self) -> None:
-        self._pubTopicFlag = rospy.Publisher(
+        self.pubTopicFlag = rospy.Publisher(
             self._pubTopicFlagName, Bool, queue_size=10)
-        self._pubTopicObjectBoxes = rospy.Publisher(
+        self.pubTopicObjectBoxes = rospy.Publisher(
             self._pubTopicObjectBoxesName, BoundingBoxes, queue_size=10)
 
-    def get_state_flag(self) -> Bool:  # Posible validacion del objeto con nube de puntos
-        """Retorna verdadero cuando se decta dos o mas objetos con la condicion de que uno de los objetos tiene que ser 'person'"""
-        self._flagSet = False
-        if self._nobjects >= 2:
-            for box in self._bounding_boxes.bounding_boxes:
+    def get_state_flag(self) -> Bool:
+        """Retorna verdadero cuando se decta dos o mas objetos 
+        con la condicion de que uno de los objetos tiene que ser 'person'"""
+        self.flagSet = False
+        if self.nobjects >= 2:
+            for box in self.bounding_boxes.bounding_boxes:
                 if box.Class == "person":
-                    self._flagSet = True
-        return self._flagSet
+                    self.flagSet = True
+        return self.flagSet
 
     def get_object_boxes(self) -> BoundingBoxes:
         """Retorna posicion del un objeto particular"""
-        boxes = self._bounding_boxes
+        boxes = self.bounding_boxes
         #boxes.bounding_boxes = []
         for i, box in enumerate(boxes.bounding_boxes):
-            if box.Class == "person":  # Probablemente listar los objetos de interes
+            if box.Class == "person":
                 del boxes.bounding_boxes[i]
         return boxes
 
 
 def main():
-    # Don't forget to remove this test mode
     system('clear')
     time.sleep(1)
     print("#"*70)
@@ -180,15 +157,16 @@ def main():
     objNode.pubTopicFlagName = TOPIC_P2_NAME
     objNode.start_subscribers()
     objNode.start_publishers()
-    time.sleep(2)
+    time.sleep(1)
+    INFO1 = True
     while not rospy.is_shutdown():
-        if objNode._dataReceivedTopic1 == False or objNode._dataReceivedTopic2 == False:
+        if (not objNode.dataReceivedTopic1  or not objNode.dataReceivedTopic2) and INFO1:
             print("[WARNING] Datos no recibidos del paquete darknet_ros")
-        else:
+            INFO1 = False
+        elif objNode.bounding_boxes:
             value = objNode.get_state_flag()
             objNode.pubTopicObjectBoxes.publish(objNode.get_object_boxes())
             objNode.pubTopicFlag.publish(value)
-        # rate.sleep()
     rospy.spin()
 
 

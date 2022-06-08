@@ -53,6 +53,7 @@ add_message_files(
   FILES
   objectData.msg
   pose.msg
+  affordance.msg
   personPos.msg
 )
 
