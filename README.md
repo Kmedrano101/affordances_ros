@@ -1,7 +1,7 @@
 # Aprendizaje de la utilidad de objetos mediante observación por vision por computador
 ## Descripción
 Para navegación semántica, detección de interacción entre persona y objeto.
-El paquete **object_utilities_ros** permite clasificar 5 clases de actividades con objetos en viviendas para robots mobiles. 
+El paquete **affordances_ros** permite clasificar 5 clases de actividades con objetos en viviendas para robots mobiles. 
 ## Requisitos
 
 - Ubuntu 20.04 LTS + ROS Noetic
