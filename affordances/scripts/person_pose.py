@@ -13,6 +13,7 @@ import time
 from os import system
 import cv2 as cv
 from copy import deepcopy
+import numpy as np
 
 # Parametros y variables
 try:
@@ -130,8 +131,6 @@ class PersonPose:
                 if id == 0 or id == 15 or id == 16 or id == 11 or id == 12:
                     if lm.visibility > 0.5:
                         contador += 1
-                h, w, c = self.cvFrame.shape
-                cx, cy = int(lm.x * w), int(lm.y * h)
                 lmAux.poses.append(deepcopy(dataPose))
             if contador >= 3:
                 self.readyCapturePose = True
@@ -170,7 +169,6 @@ class PersonPose:
 
 def main():
     system('clear')
-    time.sleep(1)
     print("#"*70)
     print(f"\t\t* TEST MODE *\t NODE: {NODE_NAME}")
     print("#"*70)
@@ -191,7 +189,7 @@ def main():
         if (not objNode.dataReceivedTopic1 or not objNode.dataReceivedTopic2) and INFO2:
             print("[WARNING] Datos no recibidos")
             INFO2 = False
-        elif objNode.cvFrame:
+        elif np.array(objNode.cvFrame).size:
             objNode.find_pose()
             objNode.find_position(draw=False)
             objNode.pubTopicStatusNode.publish(objNode.readyCapturePose)

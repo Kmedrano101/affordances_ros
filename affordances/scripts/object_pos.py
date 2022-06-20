@@ -11,14 +11,18 @@ from affordances.msg import objectData
 import time
 from os import system
 import cv2 as cv
-
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument('-m', '--mode', type=int,
+                    help='1 Trainging Mode - 2 Prediction Mode', default=1)
+args = parser.parse_args()
 # Parametros y variables
 try:
     rospy.get_param_names()
 except ROSException:
     print("[WARNING] No se puede obtener los nombres de parametros")
 
-PACKAGE_NAME = rospy.get_namespace()
+PACKAGE_NAME = "/affordances/"
 NODE_NAME = rospy.get_param(PACKAGE_NAME+"node_op_name", default="object_pos")
 TOPIC_S1_NAME = rospy.get_param(
     PACKAGE_NAME+"subscribers/border_boxes/topic", default="/affordances/object_bounding_boxes")
@@ -28,6 +32,9 @@ TOPIC_P1_NAME = rospy.get_param(
     PACKAGE_NAME+"publishers/status_object_pos/topic", default="/affordances/status_object_pos")
 TOPIC_P2_NAME = rospy.get_param(
     PACKAGE_NAME+"publishers/data_object_pos/topic", default="/affordances/data_object_pos")
+
+OBJECT_TO_TRACK = rospy.get_param(PACKAGE_NAME+"train_object")
+OBJECTS_TO_TRACK = rospy.get_param(PACKAGE_NAME+"prediction_objects")
 
 OPENCV_OBJECT_TRACKERS = {
     "csrt": cv.TrackerCSRT_create,
@@ -73,6 +80,7 @@ class ObjectPos:
         self.auxReset = False
         self.TRACKER = OPENCV_OBJECT_TRACKERS["csrt"]()
         self.ClassObject = None
+        self.detectedObjects = []
 
     """Propierties"""
     @property
@@ -149,15 +157,23 @@ class ObjectPos:
         self.pubTopicDataNode = rospy.Publisher(
             self._pubTopicDataNodeName, objectData, queue_size=10)
 
+    def get_objects(self) -> None:
+        for box in self.borderBoxes:
+            self.detectedObjects.append(box.Class)
+        self.data.objectsDetected = self.detectedObjects
+
     def get_pos(self) -> None:
         """ Funcion para obtener la posicion central del objeto a realizar el tracking"""
         pos = []
+        objetos = []
         self.dataPosReady = False
-        # ["refrigerator","cup","bicycle","sofa","chair","wine glass","cell phone","laptop","book"]
-        Objetos = ["tvmonitor"]
+        if int(args.mode) == 1:
+            objetos = OBJECT_TO_TRACK
+        else:
+            objetos = OBJECTS_TO_TRACK
         if self.dataReceivedTopic2 and not self.statusTracking:
             for box in self.borderBoxes:
-                if box.Class in Objetos:
+                if box.Class in objetos:
                     pos.append(box.xmin-2)
                     pos.append(box.ymin-2)
                     pos.append(abs(box.ymax - box.ymin)+2)
@@ -246,7 +262,7 @@ class ObjectPos:
 
 def main():
     system('clear')
-    time.sleep(1)
+    # time.sleep(1)
     print("#"*70)
     print(f"\t\t* TEST MODE *\t NODE: {NODE_NAME}")
     print("#"*70)
@@ -261,13 +277,19 @@ def main():
     objNode.pubTopicDataNodeName = TOPIC_P2_NAME
     objNode.start_subscribers()
     objNode.start_publishers()
-    time.sleep(1)
+    if int(args.mode) == 1:
+        print("Trainging mode")
+    else:
+        print("Prediction mode")
+    INFO1 = True
     while not rospy.is_shutdown():
-        if objNode.dataReceivedTopic1 == False and objNode.dataReceivedTopic2 == False:
+        if (not objNode.dataReceivedTopic1 or not objNode.dataReceivedTopic2) and INFO1:
             print("[WARNING] Datos no recibidos")
+            INFO1 = False
         else:
             objNode.get_pos()
             objNode.process_img()
+            objNode.get_objects()
         objNode.pubTopicStatusNode.publish(objNode.statusNode)
         objNode.pubTopicDataNode.publish(objNode.data)
     rospy.spin()

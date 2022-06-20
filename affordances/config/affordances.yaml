@@ -1,37 +1,4 @@
 
-#Nodes and Packages
-
-package_name: "affordances"
-node_po_name: "person_object"
-node_op_name: "object_pos"
-node_agent_name: "agent"
-node_dialog_name: "dialog"
-
-subscribers:
-
-  image_source:
-    topic: /videofile/image_raw #/usb_cam/image_raw
-    queue_size: 1
-
-  # Node object_pos
-  border_boxes:
-    topic: /affordances/object_bounding_boxes
-    queue_size: 1
-
-  # Node person_object
-  number_object:
-    topic: /darknet_ros/found_object
-    queue_size: 1
-
-  object_bounding_boxes:
-    topic: /darknet_ros/bounding_boxes
-    queue_size: 1
-
-  # Node person_pose
-  person_object_flag:
-    topic: /affordances/flag
-    queue_size: 1
-
 publishers:
 
   # Node object_pos
@@ -61,7 +28,79 @@ publishers:
     topic: /affordances/data_person_pose
     queue_size: 1
 
-  # Node train
-  type_activity:
-    topic: /affordances/number_activity
+  # Node agent
+  utility:
+    topic: /affordances/utilities
     queue_size: 1
+
+# MODE TRAIN VALUES
+# (laptop) using 1, (sofa) lying down 2, (sofa) sitting 3, (bed) sleeping 4
+# (cup) drinking 5, (refrigerator) using 6, exercising 7
+train_object: "tvmonitor" # for tracking in train mode
+valor_y: 7
+# MODE PREDICTION VALUES
+prediction_objects: # for tracking in prediction mode
+  - refrigerator
+  - cup
+  - sofa
+  - laptop
+  - bed
+
+detection_objects: # 55 objects
+  - person
+  - bicycle
+  - car
+  - motorbike
+  - backpack
+  - umbrella
+  - handbag
+  - tie
+  - suitcase
+  - skis
+  - snowboard
+  - sports ball
+  - baseball bat
+  - baseball glove
+  - skateboard
+  - tennis racket
+  - bottle
+  - wine glass
+  - cup
+  - fork
+  - knife
+  - spoon
+  - bowl
+  - banana
+  - apple
+  - sandwich
+  - orange
+  - broccoli
+  - carrot
+  - hot dog
+  - pizza
+  - donut
+  - cake
+  - chair
+  - sofa
+  - pottedplant
+  - bed
+  - diningtable
+  - toilet
+  - tvmonitor
+  - laptop
+  - mouse
+  - remote
+  - keyboard
+  - cell phone
+  - microwave
+  - oven
+  - toaster
+  - sink
+  - refrigerator
+  - book
+  - clock
+  - vase
+  - scissors
+  - teddy bear
+  - hair drier
+  - toothbrush

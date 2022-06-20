@@ -142,7 +142,7 @@ class PersonObject:
 
 def main():
     system('clear')
-    time.sleep(1)
+    # time.sleep(1)
     print("#"*70)
     print(f"\t\t* TEST MODE *\t NODE: {NODE_NAME}")
     print("#"*70)
@@ -157,10 +157,9 @@ def main():
     objNode.pubTopicFlagName = TOPIC_P2_NAME
     objNode.start_subscribers()
     objNode.start_publishers()
-    time.sleep(1)
     INFO1 = True
     while not rospy.is_shutdown():
-        if (not objNode.dataReceivedTopic1  or not objNode.dataReceivedTopic2) and INFO1:
+        if (not objNode.dataReceivedTopic1 or not objNode.dataReceivedTopic2) and INFO1:
             print("[WARNING] Datos no recibidos del paquete darknet_ros")
             INFO1 = False
         elif objNode.bounding_boxes:

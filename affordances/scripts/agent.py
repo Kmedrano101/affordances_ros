@@ -11,28 +11,23 @@ import os
 import csv
 from sklearn.preprocessing import StandardScaler
 import numpy as np
-
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('-m', '--mode', type=int,
                     help='1 Trainging Mode - 2 Prediction Mode', default=1)
 
+# al usar join path se enlaza la direccion por defecto de ros (.ros) validar quitar /.ros
 args = parser.parse_args()
+# os.path.join(os.getcwd(),"catkin_ws/src/affordances/data/")
+path = "/home/kmedrano101/catkin_ws/src/affordances/data/"
 
-# FILE DATASET
-CSV_FILE_1 = open(
-    '/home/kmedrano101/catkin_ws/src/affordances/data/DSAllPoints.csv', 'a')
-CSV_FILE_2 = open(
-    '/home/kmedrano101/catkin_ws/src/affordances/data/DS13Points.csv', 'a')
-CSV_FILE_3 = open(
-    '/home/kmedrano101/catkin_ws/src/affordances/data/DS9Points.csv', 'a')
 # Parametros y variables
 try:
     rospy.get_param_names()
 except ROSException:
     print("[WARNING] No se puede obtener los nombres de parametros")
 
-PACKAGE_NAME = rospy.get_namespace()
+PACKAGE_NAME = "/affordances/"
 NODE_NAME = rospy.get_param(PACKAGE_NAME+"node_agent_name", default="agent")
 TOPIC_S1_NAME = rospy.get_param(
     PACKAGE_NAME+"publishers/data_object_pos/topic", default="/affordances/data_object_pos")
@@ -45,7 +40,26 @@ TOPIC_S4_NAME = rospy.get_param(
 TOPIC_P1_NAME = rospy.get_param(
     PACKAGE_NAME+"publishers/utility/topic", default="/affordances/utilities")
 
+DATASET_NAME = rospy.get_param(
+    PACKAGE_NAME+"dataset_name", default="dataset.csv")
+MODEL_NAME = rospy.get_param(PACKAGE_NAME+"model_name", default="model.sav")
+DETECTION_OBJECTS = rospy.get_param(PACKAGE_NAME+"detection_objects")
+VALOR_Y = rospy.get_param(PACKAGE_NAME+"valor_y")
+
+try:
+    # FILE DATASET CON DISTANCIAS Y VELOCIDAD
+    CSV_FILE_1 = open(path+'DSAllPoints_B.csv', 'a')
+    CSV_FILE_2 = open(path+'DS13Points_B.csv', 'a')
+    CSV_FILE_3 = open(path+'DS9Points_B.csv', 'a')
+    # FILE DATASET SIN DISTANCIAS Y VELOCIDAD
+    CSV_FILE_4 = open(path+'DSAllPoints_C.csv', 'a')
+    CSV_FILE_5 = open(path+'DS13Points_C.csv', 'a')
+    CSV_FILE_6 = open(path+'DS9Points_C.csv', 'a')
+    CSV_FILE = open(path+DATASET_NAME, 'a')
+except:
+    print("Error al leer los archivos csv")
 # Class Agent
+
 
 class Agent:
     """Agent M.L. object"""
@@ -57,7 +71,7 @@ class Agent:
         self._subTopicStatusObjectName = None
         self._pubTopicAffordancesName = None
         self.dataPersonPose = personPos()
-        self.dataObjectPose = objectData()
+        self.dataObjectPos = objectData()
         self.statusPose = False
         self.statusObject = False
         self.pubTopicAffordances = None
@@ -65,13 +79,17 @@ class Agent:
         self.sTime = 0.95
         self.iTime = 0
         self.aTime = time.time()
-        self.VectorData = []
         self.VectorData1 = []
         self.VectorData2 = []
+        self.VectorData3 = []
+        self.VectorData4 = []
+        self.VectorData5 = []
+        self.VectorData6 = []
         self.Counter = 0
         self.scaler = StandardScaler()
         self.ResetCounterCap = False
         self.numeroDatos = 0
+        self.DetectedObjects = [0] * len(DETECTION_OBJECTS)
 
     """ Properties """
     @property
@@ -140,7 +158,7 @@ class Agent:
         self.dataPersonPose = msg
 
     def data_object_callback(self, msg) -> None:
-        self.dataObjectPose = msg
+        self.dataObjectPos = msg
 
     def status_pose_callback(self, msg) -> None:
         self.statusPose = msg.data
@@ -162,33 +180,70 @@ class Agent:
         self._pubTopicAffordances = rospy.Publisher(
             self._pubTopicAffordancesName, affordance, queue_size=10)
 
-    def save_data_set(self) -> None:
-        # Lista de Puntos para POSE de interes
-        # Realizar analisis de reduccion de dimensionalidad
+    def write_data_to_csv(self, file, data) -> None:
+        try:
+            writer = csv.writer(file, delimiter=':',
+                                quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            writer.writerow(data)
+            file.flush()
+            os.fsync(file.fileno())
+        except Exception as e:
+            print("Error: ", e)
+            pass
+
+    def reset_data(self) -> None:
+        self.Counter = 0
+        self.VectorData1 = []
+        self.VectorData2 = []
+        self.VectorData3 = []
+        self.VectorData4 = []
+        self.VectorData5 = []
+        self.VectorData6 = []
+        self.DetectedObjects = [0] * len(DETECTION_OBJECTS)
+
+    def save_data(self) -> None:
         PosePoints = [0, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28]
         PosePoints2 = [0, 11, 12, 15, 16, 23, 24, 27, 28]
+        for i in range(len(DETECTION_OBJECTS)):
+            self.DetectedObjects[i] = 1 if DETECTION_OBJECTS[i] in self.dataObjectPos.objectsDetected else 0
         PosePointsALL = []
-        PosePointsDistances = [0, 19, 20, 31, 32]  # Distancias de interes
-        temp, temp2 = [], []
-        temp3, distans = [], []
-        if self.statusObject == True and self.statusPose == True:
+        PosePointsDistances = [0, 19, 20, 31, 32]
+        temp1, temp2, temp3 = [], [], []
+        distans = []
+        if self.statusObject and not self.ResetCounterCap:
+            # Con objeto de interes o sin objeto
+            self.DetectedObjects.append(1)
             self.ResetCounterCap = True
+        elif not self.ResetCounterCap:
+            self.DetectedObjects.append(0)
+            self.ResetCounterCap = True
+        if self.DetectedObjects[len(self.DetectedObjects)-1] == 0 and self.statusObject:
+            self.reset_data()
+            self.DetectedObjects.append(1)
+        if self.DetectedObjects[len(self.DetectedObjects)-1] == 1 and not self.statusObject:
+            self.reset_data()
+            self.DetectedObjects.append(0)
+        if self.statusPose == True:
             self.aTime = time.time()
             if self.aTime > (self.sTime+self.iTime):
                 print("Capturing Data...")
                 self.iTime = time.time()
                 if self.Counter <= 5:
                     # Datos objeto
-                    temp3 = [self.dataObjectPose.x,
-                            self.dataObjectPose.y, self.dataObjectPose.velocity]
-                    temp3 = np.array(temp3)
-                    temp3 = self.scaler.fit_transform(
-                        temp3[:, np.newaxis]).tolist()
-                    temp3 = [temp3[0][0], temp3[1][0], temp3[2][0]]
+                    if self.statusObject:
+                        # considerar sin velocidad
+                        temp3 = [self.dataObjectPos.x,
+                                self.dataObjectPos.y, self.dataObjectPos.velocity]
+                        temp3 = np.array(temp3)
+                        temp3 = self.scaler.fit_transform(
+                            temp3[:, np.newaxis]).tolist()
+                        temp3 = [temp3[0][0], temp3[1][0], temp3[2][0]]
+                    else:
+                        temp3 = [0]*3
                     # Guardando datos de Human Pose
                     for pose in self.dataPersonPose.poses:
                         # Tomando las distancias
-                        if pose.id_pos in PosePointsDistances:
+                        if pose.id_pos in PosePointsDistances and self.statusObject:
                             value = np.sqrt(
                                 (temp3[0]-float(pose.position.x))**2+(temp3[1]-float(pose.position.y))**2)
                             distans.append(value)
@@ -197,54 +252,65 @@ class Agent:
                                         pose.position.z, pose.visibility]
                         # Tomando puntos de interes 1
                         if pose.id_pos in PosePoints:
-                            temp += [pose.position.x, pose.position.y,
+                            temp1 += [pose.position.x, pose.position.y,
                                     pose.position.z, pose.visibility]
                         # Tomando puntos de interes 2
                         if pose.id_pos in PosePoints2:
                             temp2 += [pose.position.x, pose.position.y,
                                     pose.position.z, pose.visibility]
+                    self.VectorData4.extend(PosePointsALL)
+                    self.VectorData4.extend(temp3)
+                    self.VectorData5.extend(temp1)
+                    self.VectorData5.extend(temp3)
+                    self.VectorData6.extend(temp2)
+                    self.VectorData6.extend(temp3)
+                    if not distans:
+                        distans = [0] * len(PosePointsDistances)
                     temp3.extend(distans)
-                    self.VectorData.extend(PosePointsALL)
-                    self.VectorData.extend(temp3)
-                    self.VectorData1.extend(temp)
+                    self.VectorData1.extend(PosePointsALL)
                     self.VectorData1.extend(temp3)
-                    self.VectorData2.extend(temp2)
+                    self.VectorData2.extend(temp1)
                     self.VectorData2.extend(temp3)
+                    self.VectorData3.extend(temp2)
+                    self.VectorData3.extend(temp3)
                     self.Counter += 1
                 else:
-                    classObject = 4 if self.dataObjectPose.classObject == "bed" else 6
-                    temp3.extend(["refrigerator", classObject])
-                    self.VectorData.extend(temp3)
-                    self.VectorData1.extend(temp3)
-                    self.VectorData2.extend(temp3)
+                    self.DetectedObjects.append(VALOR_Y)
+                    self.VectorData1.extend(self.DetectedObjects)
+                    self.VectorData2.extend(self.DetectedObjects)
+                    self.VectorData3.extend(self.DetectedObjects)
+                    self.VectorData4.extend(self.DetectedObjects)
+                    self.VectorData5.extend(self.DetectedObjects)
+                    self.VectorData6.extend(self.DetectedObjects)
                     value = input("Save data? y/n: ")
-                    if value == "y" and len(self.VectorData) == 842:
-                        writer = csv.writer(
-                            CSV_FILE_1, delimiter=':', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-                        writer.writerow(self.VectorData)
-                        writer.writerow(self.VectorData1)
-                        writer.writerow(self.VectorData2)
-                        CSV_FILE_1.flush()
-                        os.fsync(CSV_FILE_1.fileno())
-                        CSV_FILE_2.flush()
-                        os.fsync(CSV_FILE_2.fileno())
-                        CSV_FILE_3.flush()
-                        os.fsync(CSV_FILE_3.fileno())
-                        print("[INFO] Saving Data...")
-                        self.numeroDatos += 1
-                        print("Numero Dato: ", self.numeroDatos)
+                    if value == "y" and len(self.VectorData3) == 323:
+                        error = 0
+                        try:
+                            self.write_data_to_csv(
+                                CSV_FILE_1, self.VectorData1)
+                            self.write_data_to_csv(
+                                CSV_FILE_2, self.VectorData2)
+                            self.write_data_to_csv(
+                                CSV_FILE_3, self.VectorData3)
+                            self.write_data_to_csv(
+                                CSV_FILE_4, self.VectorData4)
+                            self.write_data_to_csv(
+                                CSV_FILE_5, self.VectorData5)
+                            self.write_data_to_csv(
+                                CSV_FILE_6, self.VectorData6)
+                        except Exception as e:
+                            print("Error al guardar csv", str(e))
+                            error = 1
+                            pass
+                        if error == 0:
+                            print("[INFO] Saving Data...")
+                            self.numeroDatos += 1
+                            print("NUMBER OF DATA: ", self.numeroDatos)
                     else:
                         print("[INFO] Data does not save!")
-                    self.Counter = 0
-                    self.VectorData = []
-                    self.VectorData1 = []
-                    self.VectorData2 = []
+                    self.reset_data()
+                    self.ResetCounterCap = False
                 print("DATA Counter:", self.Counter)
-        if self.ResetCounterCap and self.statusObject == False:
-            self.Counter = 0
-            self.VectorData = []
-            self.VectorData1 = []
-            self.VectorData2 = []
 
     def prediction_mode(self) -> None:
         pass
@@ -252,13 +318,12 @@ class Agent:
 
 def main():
     os.system('clear')
-    time.sleep(1)
+    # time.sleep(1)
     print("#"*70)
     print(f"\t\t* TEST MODE *\t NODE: {NODE_NAME}")
     print("#"*70)
     rospy.init_node(NODE_NAME)
     rospy.loginfo(f"NODO {NODE_NAME} INICIADO.")
-
     """Inicializar el objeto Agent"""
     objNode = Agent()
     objNode.subTopicObjectPoseName = TOPIC_S1_NAME
@@ -268,15 +333,14 @@ def main():
     objNode.pubTopicAffordancesName = TOPIC_P1_NAME
     objNode.start_subscribers()
     objNode.start_publishers()
-    time.sleep(1)
-    op = args.mode
-    if op == 1:
+    time.sleep(3)
+    if int(args.mode) == 1:
         print("Trainging mode")
     else:
         print("Prediction mode")
     while not rospy.is_shutdown():
-        if op == 1:
-            objNode.save_data_set()
+        if args.mode == 1:
+            objNode.save_data()
         else:
             objNode.prediction_mode()
     rospy.spin()
