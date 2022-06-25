@@ -1,4 +1,4 @@
-# Aprendizaje de la utilidad de objetos mediante observación por vision por computador
+# Aprendizaje de la utilidad de objetos mediante observación de relación movimento humano y objeto
 ## Descripción
 Para navegación semántica, detección de interacción entre persona y objeto.
 El paquete **affordances_ros** permite clasificar 5 clases de actividades con objetos en viviendas para robots mobiles.
